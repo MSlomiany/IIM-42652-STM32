@@ -33,13 +33,16 @@ typedef struct iim_scaled_data
 typedef struct iim_status
 {
     SPI_HandleTypeDef *spi_h;
+    GPIO_TypeDef *cs_port;
+    uint16_t cs_pin;
+
     uint8_t gyro_fs;
     uint8_t gyro_odr;
     uint8_t acc_fs;
     uint8_t acc_odr;
 } iim_status;
 
-void IIM_init(SPI_HandleTypeDef *i2c_handler);
+void IIM_init(SPI_HandleTypeDef *spi_handler, GPIO_TypeDef *cs_port, uint16_t cs_pin);
 
 void IIM_readTemperature(float *temperature);
 

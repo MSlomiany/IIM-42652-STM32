@@ -18,9 +18,12 @@
 
 iim_status dev;
 
-void IIM_init(SPI_HandleTypeDef *spi_handler)
+void IIM_init(SPI_HandleTypeDef *spi_handler, GPIO_TypeDef *cs_port, uint16_t cs_pin)
 {
     dev.spi_h = spi_handler;
+    dev.cs_port = cs_port;
+    dev.cs_pin = cs_pin;
+
     dev.gyro_fs = SET_GYRO_FS_SEL_2000_dps;
     dev.gyro_odr = SET_GYRO_ODR_1kHz;
     dev.acc_fs = SET_ACCEL_FS_SEL_16g;
@@ -29,52 +32,76 @@ void IIM_init(SPI_HandleTypeDef *spi_handler)
 
 void IIM_readTemperature(float *temperature)
 {
-    uint8_t tmp[2];
-    HAL_I2C_Mem_Read(dev.spi_h, IIM_ADR, TEMP_DATA1_UI, 1, tmp, 2, 10);
+    uint8_t txBuffer[3] = {0, 0xFF, 0xFF};
+    uint8_t rxBuffer[3] = {0, 0, 0};
 
-    int16_t temp_int = (tmp[0] << 8 | tmp[1]);
+    txBuffer[0] = TEMP_DATA1_UI | 0x80;
+
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(dev.spi_h, txBuffer, rxBuffer, 3, 10);
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_SET);
+
+    int16_t temp_int = (rxBuffer[1] << 8 | rxBuffer[2]);
     *temperature = (float)temp_int;
     *temperature = ((*temperature) / 132.48) + 25.0;
 }
 
 void IIM_powerOn()
 {
-    uint8_t msg = 0x1F;
-    HAL_I2C_Mem_Write(dev.spi_h, IIM_ADR, PWR_MGMT0, 1, &msg, 1, 10);
+    uint8_t txBuffer[2];                       // Transmit buffer (1: address 2:3: data)
+    txBuffer[0] = PWR_MGMT0; // In write oprerations, first bit in SPI transfer has to be 1
+    txBuffer[1] = 0x1F;                 // Assign command to transmit buffer
+
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_RESET);
+    HAL_SPI_Transmit(dev.spi_h, txBuffer, 2, 10);
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_SET);
+
     HAL_Delay(500);
 }
 
 void IIM_readAccel(iim_raw_data *data)
 {
-    uint8_t tmp[6];
     uint16_t temp;
 
-    HAL_I2C_Mem_Read(dev.spi_h, IIM_ADR, ACCEL_DATA_X1_UI, 1, tmp, 6, 10);
+    uint8_t txBuffer[7] = {0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t rxBuffer[7] = {0, 0, 0, 0, 0, 0, 0};
 
-    temp = (tmp[0] << 8 | tmp[1]);
+    txBuffer[0] = ACCEL_DATA_X1_UI | 0x80;
+
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(dev.spi_h, txBuffer, rxBuffer, 7, 10);
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_SET);
+
+    temp = (rxBuffer[1] << 8 | rxBuffer[2]);
     data->x = (int16_t)temp;
 
-    temp = (tmp[2] << 8 | tmp[3]);
+    temp = (rxBuffer[3] << 8 | rxBuffer[4]);
     data->y = (int16_t)temp;
 
-    temp = (tmp[4] << 8 | tmp[5]);
+    temp = (rxBuffer[5] << 8 | rxBuffer[6]);
     data->z = (int16_t)temp;
 }
 
 void IIM_readGyro(iim_raw_data *data)
 {
-    uint8_t tmp[6];
     uint16_t temp;
 
-    HAL_I2C_Mem_Read(dev.spi_h, IIM_ADR, GYRO_DATA_X1_UI, 1, tmp, 6, 10);
+    uint8_t txBuffer[7] = {0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t rxBuffer[7] = {0, 0, 0, 0, 0, 0, 0};
 
-    temp = (tmp[0] << 8 | tmp[1]);
+    txBuffer[0] = GYRO_DATA_X1_UI | 0x80;
+
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(dev.spi_h, txBuffer, rxBuffer, 7, 10);
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_SET);
+
+    temp = (rxBuffer[1] << 8 | rxBuffer[2]);
     data->x = (int16_t)temp;
 
-    temp = (tmp[2] << 8 | tmp[3]);
+    temp = (rxBuffer[3] << 8 | rxBuffer[4]);
     data->y = (int16_t)temp;
 
-    temp = (tmp[4] << 8 | tmp[5]);
+    temp = (rxBuffer[5] << 8 | rxBuffer[6]);
     data->z = (int16_t)temp;
 }
 
