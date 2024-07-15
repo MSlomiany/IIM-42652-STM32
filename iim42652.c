@@ -126,7 +126,13 @@ void IIM_configAccel(uint8_t fs, uint8_t odr)
     uint8_t tmp;
     tmp = fs << 5;
     tmp |= odr;
-    HAL_I2C_Mem_Write(dev.spi_h, IIM_ADR, ACCEL_CONFIG0, 1, &tmp, 1, 10);
+
+    uint8_t txBuffer[2] = {ACCEL_CONFIG0, tmp};
+    uint8_t rxBuffer[2] = {0, 0};
+
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(dev.spi_h, txBuffer, rxBuffer, 2, 10);
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_SET);
 }
 
 void IIM_configGyro(uint8_t fs, uint8_t odr)
@@ -136,7 +142,13 @@ void IIM_configGyro(uint8_t fs, uint8_t odr)
     uint8_t tmp;
     tmp = fs << 5;
     tmp |= odr;
-    HAL_I2C_Mem_Write(dev.spi_h, IIM_ADR, GYRO_CONFIG0, 1, &tmp, 1, 10);
+
+    uint8_t txBuffer[2] = {GYRO_CONFIG0, tmp};
+    uint8_t rxBuffer[2] = {0, 0};
+
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_RESET);
+    HAL_SPI_TransmitReceive(dev.spi_h, txBuffer, rxBuffer, 2, 10);
+    HAL_GPIO_WritePin(dev.cs_port, dev.cs_pin, GPIO_PIN_SET);
 }
 
 #endif
